@@ -1,135 +1,122 @@
-
-public class TennisGame2 implements TennisGame
-{
-    public int P1point = 0;
-    public int P2point = 0;
-    
-    public String P1res = "";
-    public String P2res = "";
-    private String player1Name;
-    private String player2Name;
+public class TennisGame2 implements TennisGame {
+    private Player player1;
+    private Player player2;
 
     public TennisGame2(String player1Name, String player2Name) {
-        this.player1Name = player1Name;
-        this.player2Name = player2Name;
+        this.player1 = new Player(player1Name);
+        this.player2 = new Player(player2Name);
     }
 
-    public String getScore(){
-        String score = "";
-        if (P1point == P2point && P1point < 4)
-        {
-            if (P1point==0)
-                score = "Love";
-            if (P1point==1)
-                score = "Fifteen";
-            if (P1point==2)
-                score = "Thirty";
-            score += "-All";
+    @Override
+    public void wonPoint(String playerName) {
+        if ("player1".equals(playerName)) {
+            player1.incrementScore();
+        } else {
+            player2.incrementScore();
         }
-        if (P1point==P2point && P1point>=3)
-            score = "Deuce";
-        
-        if (P1point > 0 && P2point==0)
-        {
-            if (P1point==1)
-                P1res = "Fifteen";
-            if (P1point==2)
-                P1res = "Thirty";
-            if (P1point==3)
-                P1res = "Forty";
-            
-            P2res = "Love";
-            score = P1res + "-" + P2res;
-        }
-        if (P2point > 0 && P1point==0)
-        {
-            if (P2point==1)
-                P2res = "Fifteen";
-            if (P2point==2)
-                P2res = "Thirty";
-            if (P2point==3)
-                P2res = "Forty";
-            
-            P1res = "Love";
-            score = P1res + "-" + P2res;
-        }
-        
-        if (P1point>P2point && P1point < 4)
-        {
-            if (P1point==2)
-                P1res="Thirty";
-            if (P1point==3)
-                P1res="Forty";
-            if (P2point==1)
-                P2res="Fifteen";
-            if (P2point==2)
-                P2res="Thirty";
-            score = P1res + "-" + P2res;
-        }
-        if (P2point>P1point && P2point < 4)
-        {
-            if (P2point==2)
-                P2res="Thirty";
-            if (P2point==3)
-                P2res="Forty";
-            if (P1point==1)
-                P1res="Fifteen";
-            if (P1point==2)
-                P1res="Thirty";
-            score = P1res + "-" + P2res;
-        }
-        
-        if (P1point > P2point && P2point >= 3)
-        {
-            score = "Advantage player1";
-        }
-        
-        if (P2point > P1point && P1point >= 3)
-        {
-            score = "Advantage player2";
-        }
-        
-        if (P1point>=4 && P2point>=0 && (P1point-P2point)>=2)
-        {
-            score = "Win for player1";
-        }
-        if (P2point>=4 && P1point>=0 && (P2point-P1point)>=2)
-        {
-            score = "Win for player2";
-        }
-        return score;
-    }
-    
-    public void SetP1Score(int number){
-        
-        for (int i = 0; i < number; i++)
-        {
-            P1Score();
-        }
-            
-    }
-    
-    public void SetP2Score(int number){
-        
-        for (int i = 0; i < number; i++)
-        {
-            P2Score();
-        }
-            
-    }
-    
-    public void P1Score(){
-        P1point++;
-    }
-    
-    public void P2Score(){
-        P2point++;
     }
 
-    public void wonPoint(String player) {
-        if (player == "player1")
-            P1Score();
-        else
-            P2Score();
+    @Override
+    public String getScore() {
+        ScoreCalculator calculator = determineScoreCalculator();
+        return calculator.calculate(player1, player2);
+    }
+
+    private ScoreCalculator determineScoreCalculator() {
+        if (isDeuce()) {
+            return new DeuceScore();
+        }
+        if (isEndGame()) {
+            return new EndGameScore();
+        }
+        if (isDraw()) {
+            return new DrawScore();
+        }
+        return new RegularScore();
+    }
+
+    private boolean isDeuce() {
+        return player1.getPoints() == player2.getPoints() && player1.getPoints() >= 3;
+    }
+
+    private boolean isEndGame() {
+        return player1.getPoints() >= 4 || player2.getPoints() >= 4;
+    }
+
+    private boolean isDraw() {
+        return player1.getPoints() == player2.getPoints();
+    }
+}
+
+class Player {
+    private static final String[] SCORE_NAMES = {"Love", "Fifteen", "Thirty", "Forty"};
+    private String name;
+    private int points;
+
+    public Player(String name) {
+        this.name = name;
+        this.points = 0;
+    }
+
+    public void incrementScore() {
+        points++;
+    }
+
+    public int getPoints() {
+        return points;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getScoreName() {
+        if (points < SCORE_NAMES.length) {
+            return SCORE_NAMES[points];
+        }
+        return "";
+    }
+}
+
+interface ScoreCalculator {
+    String calculate(Player player1, Player player2);
+}
+
+class DrawScore implements ScoreCalculator {
+    @Override
+    public String calculate(Player player1, Player player2) {
+        return player1.getScoreName() + "-All";
+    }
+}
+
+class DeuceScore implements ScoreCalculator {
+    @Override
+    public String calculate(Player player1, Player player2) {
+        return "Deuce";
+    }
+}
+
+class EndGameScore implements ScoreCalculator {
+    private static final int ADVANTAGE_DIFFERENCE = 1;
+    private static final int WIN_DIFFERENCE = 2;
+
+    @Override
+    public String calculate(Player player1, Player player2) {
+        int difference = player1.getPoints() - player2.getPoints();
+        
+        if (Math.abs(difference) == ADVANTAGE_DIFFERENCE) {
+            String leadingPlayer = difference > 0 ? "player1" : "player2";
+            return "Advantage " + leadingPlayer;
+        }
+        
+        String winner = difference > 0 ? "player1" : "player2";
+        return "Win for " + winner;
+    }
+}
+
+class RegularScore implements ScoreCalculator {
+    @Override
+    public String calculate(Player player1, Player player2) {
+        return player1.getScoreName() + "-" + player2.getScoreName();
     }
 }
